@@ -1,4 +1,4 @@
--- ===== OIL EMPIRE ULTIMATE HUB (V7 - Full Combined) =====
+-- ===== OIL EMPIRE ULTIMATE HUB (V8 - UI Fixed) =====
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -18,11 +18,11 @@ local SETTINGS = {
     PLACE_DELAY  = 2.5,
     PHONE_DELAY  = 3.0,
     ESP_DELAY    = 1.0,
-    STEAL_DELAY  = 4.0, -- Jeda antar nyolong (detik)
+    STEAL_DELAY  = 4.0,
     PLACE_RADIUS = 15,
     PLACE_HEIGHT = 1.5,
     DEFAULT_MIN_PRICE = 10, 
-    MIN_GAS_TO_STEAL = 50, -- Minimal isi gas buat dicuri
+    MIN_GAS_TO_STEAL = 50,
 }
 -- ==========================================
 
@@ -44,14 +44,6 @@ local State = {
     DrillType = "Basic Drill",
 }
 
--- REMOTES
-local KnitServices = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit"):WaitForChild("Services")
-local PurchaseRE = KnitServices:WaitForChild("StoresService"):WaitForChild("RE"):WaitForChild("Purchase")
-local PlaceRE = KnitServices:WaitForChild("BaseService"):WaitForChild("RE"):WaitForChild("PlaceBuilding")
-local PhoneRE = KnitServices:WaitForChild("PhoneService"):WaitForChild("RE"):WaitForChild("Phone")
-local SellRE = KnitServices:WaitForChild("BaseService"):WaitForChild("RE"):WaitForChild("SellGas")
-local gasPriceObj = Workspace:WaitForChild("Shops"):WaitForChild("GasPrice")
-
 local function corner(inst, r) Instance.new("UICorner", inst).CornerRadius = UDim.new(0, r) end
 local function generateUUID()
     local template = 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'
@@ -61,7 +53,9 @@ local function generateUUID()
     end)
 end
 
--- ===== ROOT GUI =====
+-- ==========================================
+-- ===== BIKIN UI DULU (BIAR LANGSUNG MUNCUL) =
+-- ==========================================
 local gui = Instance.new("ScreenGui")
 gui.Name = "OilEmpireUI"
 gui.ResetOnSpawn = false
@@ -626,19 +620,6 @@ gasLabel.TextSize = 12
 gasLabel.TextXAlignment = Enum.TextXAlignment.Left
 gasLabel.Parent = statusCard
 
-task.spawn(function()
-    while task.wait(0.5) do
-        if gasPriceObj then
-            gasLabel.Text = "Harga Gas Saat Ini: $" .. tostring(gasPriceObj.Value)
-            if gasPriceObj.Value >= State.SellMin then
-                gasLabel.TextColor3 = C_GOOD
-            else
-                gasLabel.TextColor3 = C_WARN
-            end
-        end
-    end
-end)
-
 groupTitle(mainPage, "Auto Farm", 2)
 local sBuy = section(mainPage, "auto buy drill", 3)
 switchRow(sBuy, "Auto Buy Drill", "Otomatis beli drill sesuai tipe di bawah.", "AutoBuy")
@@ -692,10 +673,46 @@ switchRow(sLucky, "ESP Lucky Block", "Melihat posisi Lucky Block di map.", "ESP_
 local sRef = section(miscPage, "esp refinery", 5)
 switchRow(sRef, "ESP Refinery", "Melihat posisi kilang minyak pemain lain.", "ESP_Refinery")
 
+setTab("Main")
+refreshAll()
+
+-- ==========================================
+-- ===== AMBIL REMOTE DI BELAKANG LAYAR =====
+-- ==========================================
+local PurchaseRE, PlaceRE, PhoneRE, SellRE, gasPriceObj
+
+task.spawn(function()
+    -- Pakai pcall biar kalau gagal ngedapetin remote, UI tetep aman
+    pcall(function()
+        local KnitServices = ReplicatedStorage:WaitForChild("Packages", 10):WaitForChild("Knit", 10):WaitForChild("Services", 10)
+        PurchaseRE = KnitServices:WaitForChild("StoresService", 10):WaitForChild("RE", 10):WaitForChild("Purchase", 10)
+        PlaceRE = KnitServices:WaitForChild("BaseService", 10):WaitForChild("RE", 10):WaitForChild("PlaceBuilding", 10)
+        PhoneRE = KnitServices:WaitForChild("PhoneService", 10):WaitForChild("RE", 10):WaitForChild("Phone", 10)
+        SellRE = KnitServices:WaitForChild("BaseService", 10):WaitForChild("RE", 10):WaitForChild("SellGas", 10)
+        gasPriceObj = Workspace:WaitForChild("Shops", 10):WaitForChild("GasPrice", 10)
+    end)
+end)
+
+-- ===== LOGIKA LIVE GAS PRICE =====
+task.spawn(function()
+    while task.wait(0.5) do
+        if gasPriceObj then
+            gasLabel.Text = "Harga Gas Saat Ini: $" .. tostring(gasPriceObj.Value)
+            if gasPriceObj.Value >= State.SellMin then
+                gasLabel.TextColor3 = C_GOOD
+            else
+                gasLabel.TextColor3 = C_WARN
+            end
+        else
+            gasLabel.Text = "Harga Gas: Menunggu data..."
+        end
+    end
+end)
+
 -- ===== LOGIKA EKSEKUSI =====
 task.spawn(function()
     while task.wait(SETTINGS.SELL_DELAY) do
-        if State.AutoSell and gasPriceObj and gasPriceObj.Value >= State.SellMin then
+        if State.AutoSell and gasPriceObj and gasPriceObj.Value >= State.SellMin and SellRE then
             pcall(function() SellRE:FireServer() end)
             task.wait(SETTINGS.SELL_DELAY)
         end
@@ -704,7 +721,7 @@ end)
 
 task.spawn(function()
     while task.wait(SETTINGS.BUY_DELAY) do
-        if State.AutoBuy then 
+        if State.AutoBuy and PurchaseRE then 
             pcall(function() PurchaseRE:FireServer("DrillShop", State.DrillType) end) 
         end
     end
@@ -712,7 +729,7 @@ end)
 
 task.spawn(function()
     while task.wait(SETTINGS.PLACE_DELAY) do
-        if State.AutoPlace and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        if State.AutoPlace and PlaceRE and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
             local hrp = lp.Character.HumanoidRootPart
             local posX = hrp.Position.X + math.random(-SETTINGS.PLACE_RADIUS, SETTINGS.PLACE_RADIUS)
             local posY = hrp.Position.Y + SETTINGS.PLACE_HEIGHT
@@ -724,7 +741,7 @@ end)
 
 task.spawn(function()
     while task.wait(SETTINGS.PHONE_DELAY) do
-        if State.AutoPhone then 
+        if State.AutoPhone and PhoneRE then 
             pcall(function() PhoneRE:FireServer("Accept") end) 
         end
     end
@@ -741,7 +758,6 @@ task.spawn(function()
             local targetPrompt = nil
             local targetRefinery = nil
             
-            -- 1. Scan SEMUA refinery orang lain
             for _, obj in ipairs(Workspace:GetDescendants()) do
                 if (obj:IsA("Model") or obj:IsA("BasePart")) and string.find(string.lower(obj.Name), "refinery") then
                     if not obj:IsDescendantOf(lp.Character) then
@@ -751,7 +767,6 @@ task.spawn(function()
                             local currentGas = 0
                             local maxGas = 0
                             
-                            -- Cari Value Isi Gas dan Kapasitas Maksimal
                             for _, child in ipairs(obj:GetDescendants()) do
                                 if child:IsA("ValueBase") then
                                     local n = string.lower(child.Name)
@@ -763,17 +778,13 @@ task.spawn(function()
                                 end
                             end
                             
-                            -- Cek apakah PENUH (atau minimal 90% penuh)
                             local isFull = false
                             if maxGas > 0 then
-                                if currentGas >= (maxGas * 0.9) then
-                                    isFull = true
-                                end
+                                if currentGas >= (maxGas * 0.9) then isFull = true end
                             else
                                 isFull = true 
                             end
                             
-                            -- Kalau Penuh dan isinya lebih banyak dari target sebelumnya
                             if isFull and currentGas > highestGas then
                                 highestGas = currentGas
                                 targetPrompt = prompt
@@ -784,7 +795,6 @@ task.spawn(function()
                 end
             end
             
-            -- 2. Eksekusi kalau target ketemu
             if targetPrompt and targetRefinery and highestGas >= SETTINGS.MIN_GAS_TO_STEAL then
                 hrp.CFrame = CFrame.new(targetRefinery.Position + Vector3.new(0, 3, 0))
                 task.wait(0.25) 
@@ -858,6 +868,3 @@ task.spawn(function()
         end
     end
 end)
-
-setTab("Main")
-refreshAll()
