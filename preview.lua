@@ -1,4 +1,4 @@
--- ===== UI TEMPLATE (MAIN & MISC ONLY) =====
+-- ===== UI TEMPLATE BUILD SOLAR (PREVIEW ONLY) =====
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Players = game:GetService("Players")
@@ -7,7 +7,10 @@ local TS = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 
-if getgenv().TemplateUI then pcall(function() getgenv().TemplateUI:Destroy() end) end
+local ICON_URL = "https://raw.githubusercontent.com/Dr6seven/buildsolar/main/icon.png"
+local ICON_FILE = "buildsolar_icon.png"
+
+if getgenv().BuildSolarUI then pcall(function() getgenv().BuildSolarUI:Destroy() end) end
 
 -- ===== WARNA =====
 local C_BG   = Color3.fromRGB(18, 18, 22)
@@ -17,6 +20,7 @@ local C_OFF  = Color3.fromRGB(70, 70, 82)
 local C_ON   = Color3.fromRGB(60, 190, 100)
 local C_GRAY = Color3.fromRGB(150, 150, 160)
 
+-- State Dummy (Cuma buat visual toggle)
 local State = { Toggle1 = false, Toggle2 = false, Toggle3 = false }
 
 local function corner(inst, r) Instance.new("UICorner", inst).CornerRadius = UDim.new(0, r) end
@@ -25,11 +29,11 @@ local function nextOrder() order += 1; return order end
 
 -- ===== ROOT =====
 local gui = Instance.new("ScreenGui")
-gui.Name = "TemplateUI"
+gui.Name = "BuildSolarUI"
 gui.ResetOnSpawn = false
 local ok = pcall(function() gui.Parent = (gethui and gethui()) or game:GetService("CoreGui") end)
 if not ok or not gui.Parent then gui.Parent = lp:WaitForChild("PlayerGui") end
-getgenv().TemplateUI = gui
+getgenv().BuildSolarUI = gui
 
 local WIN_W, WIN_H = 430, 270
 local main = Instance.new("Frame")
@@ -64,7 +68,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(0, 0, 0, 16)
 title.AutomaticSize = Enum.AutomaticSize.X
 title.BackgroundTransparency = 1
-title.Text = "TEMPLATE UI"
+title.Text = "Build Solar [BETA]"
 title.TextColor3 = Color3.new(1, 1, 1)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 12
@@ -75,7 +79,7 @@ local credit = Instance.new("TextLabel")
 credit.Size = UDim2.new(0, 0, 0, 10)
 credit.AutomaticSize = Enum.AutomaticSize.X
 credit.BackgroundTransparency = 1
-credit.Text = "by Senior Engineer"
+credit.Text = "by D33RZN"
 credit.TextColor3 = C_GRAY
 credit.Font = Enum.Font.Gotham
 credit.TextSize = 7
@@ -197,19 +201,40 @@ do
 end
 
 -- ===== IKON MINIMIZE =====
-local mini = Instance.new("TextButton")
+local mini = Instance.new("ImageButton")
 mini.Size = UDim2.new(0, 46, 0, 46)
 mini.BackgroundColor3 = C_BAR
-mini.Text = "M"
-mini.TextColor3 = Color3.new(1, 1, 1)
-mini.Font = Enum.Font.GothamBold
-mini.TextSize = 20
 mini.AutoButtonColor = false
+mini.Image = ""
+mini.ScaleType = Enum.ScaleType.Crop
 mini.Position = UDim2.new(0, 16, 0.5, -23)
 mini.Visible = false
 mini.Parent = gui
 corner(mini, 12)
 Instance.new("UIStroke", mini).Color = Color3.fromRGB(220, 130, 30)
+
+local miniLetter = Instance.new("TextLabel")
+miniLetter.Size = UDim2.new(1, 0, 1, 0)
+miniLetter.BackgroundTransparency = 1
+miniLetter.Text = "B"
+miniLetter.TextColor3 = Color3.new(1, 1, 1)
+miniLetter.Font = Enum.Font.GothamBold
+miniLetter.TextSize = 22
+miniLetter.Parent = mini
+
+task.spawn(function()
+    local okIcon, asset = pcall(function()
+        local getAsset = getcustomasset or getsynasset
+        if not (writefile and getAsset) then error("executor tidak mendukung writefile/getcustomasset") end
+        local data = game:HttpGet(ICON_URL)
+        writefile(ICON_FILE, data)
+        return getAsset(ICON_FILE)
+    end)
+    if okIcon and asset and mini.Parent then
+        mini.Image = asset
+        miniLetter.Visible = false
+    end
+end)
 
 local iconPlaced = false
 minBtn.MouseButton1Click:Connect(function()
@@ -221,7 +246,6 @@ minBtn.MouseButton1Click:Connect(function()
     mini.Visible = true
 end)
 
--- ===== DRAG & CLICK IKON MINIMIZE =====
 do
     local dragging, moved, startPoint, startPos, dragInput
     mini.InputBegan:Connect(function(i)
@@ -515,7 +539,7 @@ do
     local p = pages.Main
     groupTitle(p, "Status")
     local s1 = section(p, "status info")
-    infoRow(s1, "Siap. (UI Template Only)")
+    infoRow(s1, "Preview Mode. UI Template Only.")
 
     groupTitle(p, "Fitur Utama")
     local s2 = section(p, "fitur utama toggle")
@@ -531,8 +555,7 @@ do
     switchRow(s1, "Fitur Misc 1", "Contoh toggle di halaman Misc.", "Toggle3")
     
     local s2 = section(p, "informasi misc")
-    infoRow(s2, "Semua fitur di sini hanya tampilan visual.")
+    infoRow(s2, "Semua fitur di sini hanya tampilan visual (Preview).")
 end
 
 setTab("Main")
-print("✅ UI Template (Final Fix) berhasil dimuat!")
